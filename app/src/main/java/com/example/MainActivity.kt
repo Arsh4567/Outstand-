@@ -1,5 +1,6 @@
 package com.example
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -39,6 +40,20 @@ import com.example.ui.screens.splash.AnimatedSplashScreen
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Request highest available refresh rate (e.g., 60fps/120fps) for smooth animations
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val display = display
+            if (display != null) {
+                val maxRefreshRateMode = display.supportedModes.maxByOrNull { it.refreshRate }
+                if (maxRefreshRateMode != null) {
+                    window.attributes = window.attributes.apply {
+                        preferredDisplayModeId = maxRefreshRateMode.modeId
+                    }
+                }
+            }
+        }
+        
         enableEdgeToEdge()
         setContent {
             MyApplicationTheme {
@@ -59,13 +74,37 @@ class MainActivity : ComponentActivity() {
                         if (currentDestination != "SplashScreenRoute" && currentDestination != "OnboardingRoute" && currentDestination != "AddGoalRoute" && currentDestination != null) {
                             MindCoachBottomNav(
                                 currentRoute = currentDestination,
-                                onNavigate = { route ->
-                                    navController.navigate(route) {
-                                        popUpTo(DashboardRoute) {
-                                            saveState = true
+                                onNavigate = { routeName ->
+                                    val route: Any = when (routeName) {
+                                        "DashboardRoute" -> DashboardRoute
+                                        "GoalsRoute" -> GoalsRoute
+                                        "InsightsRoute" -> InsightsRoute
+                                        "AICoachRoute" -> AICoachRoute
+                                        else -> return@MindCoachBottomNav
+                                    }
+                                    
+                                    // Use explicit navigate calls for type safety
+                                    when (route) {
+                                        is DashboardRoute -> navController.navigate(DashboardRoute) {
+                                            popUpTo(DashboardRoute) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
                                         }
-                                        launchSingleTop = true
-                                        restoreState = true
+                                        is GoalsRoute -> navController.navigate(GoalsRoute) {
+                                            popUpTo(DashboardRoute) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                        is InsightsRoute -> navController.navigate(InsightsRoute) {
+                                            popUpTo(DashboardRoute) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                        is AICoachRoute -> navController.navigate(AICoachRoute) {
+                                            popUpTo(DashboardRoute) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
                                     }
                                 }
                             )

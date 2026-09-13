@@ -8,7 +8,9 @@ import com.example.data.local.dao.MindCoachDao
 import com.example.data.model.DailyTask
 import com.example.data.model.Goal
 
-@Database(entities = [Goal::class, DailyTask::class], version = 1, exportSchema = false)
+import com.example.data.model.UserStats
+
+@Database(entities = [Goal::class, DailyTask::class, UserStats::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun mindCoachDao(): MindCoachDao
 
@@ -22,7 +24,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "mindcoach_database"
-                ).build()
+                )
+                .fallbackToDestructiveMigration()
+                .build()
                 INSTANCE = instance
                 instance
             }

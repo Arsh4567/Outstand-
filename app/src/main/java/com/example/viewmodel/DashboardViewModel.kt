@@ -9,6 +9,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+import com.example.data.model.UserStats
+import kotlinx.coroutines.flow.first
+import java.util.Calendar
+
 class DashboardViewModel(private val repository: MindCoachRepository) : ViewModel() {
 
     val dailyTasks: StateFlow<List<DailyTask>> = repository.allDailyTasks
@@ -18,16 +22,48 @@ class DashboardViewModel(private val repository: MindCoachRepository) : ViewMode
             initialValue = emptyList()
         )
 
-    fun addTask(title: String, timeSlot: String, description: String = "") {
-        viewModelScope.launch {
-            repository.insertDailyTask(DailyTask(title = title, timeSlot = timeSlot, description = description))
-        }
-    }
+    val userStats: StateFlow<UserStats?> = repository.userStats
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
 
     fun toggleTaskCompletion(task: DailyTask, isCompleted: Boolean) {
         viewModelScope.launch {
             repository.updateDailyTask(task.copy(isCompleted = isCompleted))
+            checkStreak()
         }
+    }
+
+    private suspend fun checkStreak() {
+        val tasks = repository.allDailyTasks.first()
+        if (tasks.isNotEmpty() && tasks.all { it.isCompleted }) {
+            val stats = repository.userStats.first() ?: UserStats()
+            val today = getStartOfDay(System.currentTimeMillis())
+            val lastCompleted = stats.lastCompletedDate
+
+            if (lastCompleted < today) {
+                // If it's a new day, increment streak.
+                val yesterday = today - 86400000L
+                val newStreak = if (lastCompleted >= yesterday) {
+                    stats.currentStreak + 1
+                } else {
+                    1
+                }
+                repository.insertUserStats(stats.copy(currentStreak = newStreak, lastCompletedDate = today))
+            }
+        }
+    }
+
+    private fun getStartOfDay(timeInMillis: Long): Long {
+        val calendar = Calendar.getInstance()
+        calendar.timeInMillis = timeInMillis
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        return calendar.timeInMillis
     }
 
     // Mock initial generation of timetable for the prototype
